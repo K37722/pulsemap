@@ -121,19 +121,18 @@ export class PolitiloggenService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.client.get('/health');
+      // Try fetching incidents as a health check (API doesn't have /health endpoint)
+      const response = await this.client.get('/hendelser', {
+        params: {
+          limit: 1,
+          // Optional: filter by Oslo to make request faster
+        },
+        timeout: 10000, // Increased timeout to 10 seconds
+      });
       return response.status === 200;
     } catch (error) {
-      // If there's no health endpoint, try fetching incidents as a health check
-      try {
-        await this.client.get('/hendelser', {
-          params: { limit: 1 },
-          timeout: 5000
-        });
-        return true;
-      } catch {
-        return false;
-      }
+      console.error('Politiloggen API health check failed:', error);
+      return false;
     }
   }
 }

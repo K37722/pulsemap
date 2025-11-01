@@ -8,6 +8,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "next lint",
+    "setup": "bash scripts/setup-env.sh && bash scripts/setup-db.sh",
+    "env:setup": "bash scripts/setup-env.sh",
     "db:setup": "bash scripts/setup-db.sh",
     "db:docker": "docker-compose up -d postgres",
     "db:docker-down": "docker-compose down",

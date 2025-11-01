@@ -79,10 +79,7 @@ psql pulsemap < lib/db/schema.sql
 
 # Setup environment
 echo "⚙️  Setting up environment..."
-if [ ! -f .env.local ]; then
-    cp .env.example .env.local
-    echo "✏️  Please update NOMINATIM_USER_AGENT in .env.local with your email"
-fi
+bash scripts/setup-env.sh
 
 echo ""
 echo "✅ Installation complete!"
