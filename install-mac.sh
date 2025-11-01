@@ -32,9 +32,14 @@ if ! command -v psql &> /dev/null; then
     echo "🗄️  Installing PostgreSQL + PostGIS..."
     brew install postgresql@15 postgis
 
-    # Add to PATH
-    echo 'export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"' >> ~/.zshrc
-    export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
+    # Add to PATH (handle both Apple Silicon and Intel)
+    if [[ $(uname -m) == 'arm64' ]]; then
+        echo 'export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"' >> ~/.zshrc
+        export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
+    else
+        echo 'export PATH="/usr/local/opt/postgresql@15/bin:$PATH"' >> ~/.zshrc
+        export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
+    fi
 
     # Start service
     brew services start postgresql@15
@@ -43,8 +48,23 @@ if ! command -v psql &> /dev/null; then
 else
     echo "✅ PostgreSQL found ($(psql --version | head -n1))"
 
-    # Make sure it's running
-    brew services start postgresql@15 2>/dev/null || true
+    # Detect PostgreSQL version
+    PG_VERSION=$(psql --version | grep -oE '[0-9]+' | head -n1)
+
+    # Make sure PostGIS is installed
+    if ! brew list postgis &> /dev/null; then
+        echo "📦 Installing PostGIS..."
+        brew install postgis
+    fi
+
+    # Make sure PostgreSQL is running (works for both @14 and @15)
+    if brew services list | grep -q "postgresql@${PG_VERSION}.*started"; then
+        echo "PostgreSQL ${PG_VERSION} is already running"
+    else
+        echo "Starting PostgreSQL ${PG_VERSION}..."
+        brew services start postgresql@${PG_VERSION} 2>/dev/null || brew services start postgresql 2>/dev/null || true
+        sleep 3
+    fi
 fi
 
 # Install npm dependencies
@@ -59,10 +79,7 @@ psql pulsemap < lib/db/schema.sql
 
 # Setup environment
 echo "⚙️  Setting up environment..."
-if [ ! -f .env.local ]; then
-    cp .env.example .env.local
-    echo "✏️  Please update NOMINATIM_USER_AGENT in .env.local with your email"
-fi
+bash scripts/setup-env.sh
 
 echo ""
 echo "✅ Installation complete!"

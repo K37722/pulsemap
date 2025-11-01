@@ -4,13 +4,17 @@
   "description": "Real-time Oslo incident map built on Politiloggen API",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
     "start": "next start",
     "lint": "next lint",
+    "setup": "bash scripts/setup-env.sh && bash scripts/setup-db.sh",
+    "env:setup": "bash scripts/setup-env.sh",
     "db:setup": "bash scripts/setup-db.sh",
     "db:docker": "docker-compose up -d postgres",
     "db:docker-down": "docker-compose down",
+    "seed": "node scripts/seed-incidents.js",
+    "test:api": "node scripts/test-api.js",
     "type-check": "tsc --noEmit"
   },
   "repository": {
@@ -21,9 +25,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.16",
     "@tanstack/react-query": "^5.90.5",
     "axios": "^1.13.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "leaflet": "^1.9.4",
     "next": "^16.0.1",
     "pg": "^8.16.3",
