@@ -163,9 +163,9 @@ export default function HomePage() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar */}
-        <aside className="w-80 bg-gray-50 border-r overflow-y-auto">
+        <aside className="w-80 bg-gray-50 border-r overflow-y-auto relative z-0">
           <div className="p-4 space-y-4">
             {/* Stats */}
             <StatsPanel />

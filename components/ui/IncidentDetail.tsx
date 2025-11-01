@@ -13,11 +13,11 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="modal-content bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -33,7 +33,8 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none ml-4"
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center text-2xl leading-none ml-4 transition-colors flex-shrink-0"
+            aria-label="Close"
           >
             ×
           </button>
@@ -115,7 +116,7 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
                 Updates ({incident.updates.length})
               </h3>
               <div className="space-y-3">
-                {incident.updates.map((update, index) => (
+                {incident.updates.map((update) => (
                   <div
                     key={update.id}
                     className="border-l-2 border-gray-300 pl-4 py-2"
