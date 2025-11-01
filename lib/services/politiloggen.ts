@@ -45,11 +45,7 @@ export class PolitiloggenService {
         SortOrder: 'Descending',
       };
 
-      // API uses capital first letter for parameters
-      if (district) {
-        params.Districts = [district]; // Array format
-      }
-
+      // Note: Districts filter doesn't seem to work server-side, we'll filter client-side
       if (from) {
         params.DateFrom = from;
       }
@@ -61,14 +57,30 @@ export class PolitiloggenService {
       // Correct endpoint is /messages not /hendelser
       const response = await this.client.get('/messages', { params });
 
-      const data = response.data;
+      // API returns { data: [...], metadata: {...} }
+      const responseData = response.data;
 
-      if (Array.isArray(data)) {
-        console.log(`✅ Fetched ${data.length} incidents from Politiloggen API`);
-        return data.map(this.normalizeIncident);
+      if (responseData && Array.isArray(responseData.data)) {
+        let incidents = responseData.data.map(this.normalizeIncident);
+
+        // Filter by district client-side (API filter doesn't work)
+        if (district) {
+          // District names in API are like "Oslo Politidistrikt" not just "Oslo"
+          const districtFilter = district.toLowerCase();
+          incidents = incidents.filter(incident =>
+            incident.district.toLowerCase().includes(districtFilter)
+          );
+        }
+
+        console.log(`✅ Fetched ${responseData.data.length} incidents from Politiloggen API`);
+        if (district) {
+          console.log(`   Filtered to ${incidents.length} incidents for district: ${district}`);
+        }
+
+        return incidents;
       }
 
-      console.warn('Unexpected API response structure:', data);
+      console.warn('Unexpected API response structure:', responseData);
       return [];
     } catch (error: any) {
       console.error('❌ Error fetching from Politiloggen API:', error.message);
