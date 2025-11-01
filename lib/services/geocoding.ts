@@ -14,7 +14,7 @@ interface NominatimResponse {
 export class GeocodingService {
   private client: AxiosInstance;
   private userAgent: string;
-  private cache: Map<string, { coords: Coordinates | null; precision: LocationPrecision }>;
+  private cache: Map<string, { coordinates: Coordinates | null; precision: LocationPrecision }>;
   private lastRequestTime: number = 0;
   private minRequestInterval: number = 1000; // Nominatim requires 1 request/second
 
@@ -51,8 +51,11 @@ export class GeocodingService {
     await this.enforceRateLimit();
 
     try {
+      // Extract city name from district (e.g., "Oslo Politidistrikt" -> "Oslo")
+      const cityName = district.replace(/\s*politidistrikt\s*/i, '').trim();
+
       // Build search query with context
-      const searchQuery = `${location}, ${district}, Norway`;
+      const searchQuery = `${location}, ${cityName}, Norway`;
 
       const response = await this.client.get<NominatimResponse[]>('/search', {
         params: {
