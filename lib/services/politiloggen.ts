@@ -1,12 +1,16 @@
 import axios, { AxiosInstance } from 'axios';
 import { PolitiloggenIncident } from '@/types/incident';
+import { mockIncidents, getMockIncidentsByDistrict, getMockIncidentsByDateRange } from './mock-data';
 
 export class PolitiloggenService {
   private client: AxiosInstance;
   private baseUrl: string;
+  private useMockData: boolean;
 
   constructor() {
     this.baseUrl = process.env.POLITILOGGEN_API_URL || 'https://api.politiet.no/politiloggen/v1';
+    this.useMockData = process.env.USE_MOCK_DATA === 'true';
+
     this.client = axios.create({
       baseURL: this.baseUrl,
       timeout: 10000,
@@ -28,48 +32,77 @@ export class PolitiloggenService {
     from?: string,
     to?: string
   ): Promise<PolitiloggenIncident[]> {
-    try {
-      const params: any = {};
+    // Use mock data if enabled or if API fails
+    if (this.useMockData) {
+      console.log('🔄 Using mock data (USE_MOCK_DATA=true in .env)');
+      return this.getMockData(district, from, to);
+    }
 
+    try {
+      const params: any = {
+        Take: 50, // Max allowed by API
+        SortBy: 'Date',
+        SortOrder: 'Descending',
+      };
+
+      // API uses capital first letter for parameters
       if (district) {
-        params.politidistrikt = district;
+        params.Districts = [district]; // Array format
       }
 
       if (from) {
-        params.fra = from;
+        params.DateFrom = from;
       }
 
       if (to) {
-        params.til = to;
+        params.DateTo = to;
       }
 
-      const response = await this.client.get('/hendelser', { params });
+      // Correct endpoint is /messages not /hendelser
+      const response = await this.client.get('/messages', { params });
 
-      // The API might return different structures - adjust based on actual response
       const data = response.data;
 
       if (Array.isArray(data)) {
+        console.log(`✅ Fetched ${data.length} incidents from Politiloggen API`);
         return data.map(this.normalizeIncident);
-      } else if (data.results && Array.isArray(data.results)) {
-        return data.results.map(this.normalizeIncident);
-      } else if (data.hendelser && Array.isArray(data.hendelser)) {
-        return data.hendelser.map(this.normalizeIncident);
       }
 
       console.warn('Unexpected API response structure:', data);
       return [];
-    } catch (error) {
-      console.error('Error fetching incidents from Politiloggen:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('❌ Error fetching from Politiloggen API:', error.message);
+
+      // Fallback to mock data if API fails
+      console.log('⚠️  API failed - falling back to mock data');
+      return this.getMockData(district, from, to);
     }
+  }
+
+  /**
+   * Get mock data (used when API is unavailable or in development)
+   */
+  private getMockData(district?: string, from?: string, to?: string): PolitiloggenIncident[] {
+    if (from || to) {
+      return getMockIncidentsByDateRange(from, to);
+    }
+    if (district) {
+      return getMockIncidentsByDistrict(district);
+    }
+    return mockIncidents;
   }
 
   /**
    * Fetch a single incident by ID
    */
   async fetchIncidentById(id: string): Promise<PolitiloggenIncident | null> {
+    if (this.useMockData) {
+      return mockIncidents.find(i => i.id === id) || null;
+    }
+
     try {
-      const response = await this.client.get(`/hendelser/${id}`);
+      // Correct endpoint is /message/{id}
+      const response = await this.client.get(`/message/${id}`);
       return this.normalizeIncident(response.data);
     } catch (error) {
       console.error(`Error fetching incident ${id}:`, error);
@@ -78,20 +111,21 @@ export class PolitiloggenService {
   }
 
   /**
-   * Normalize incident data from API response
+   * Normalize incident data from API response to our format
+   * API fields: id, threadId, text, district, category, municipality, area, createdOn, updatedOn, isActive
    */
   private normalizeIncident(raw: any): PolitiloggenIncident {
     return {
       id: raw.id || raw.hendelseid || raw.incident_id,
-      published: raw.published || raw.publisert || raw.timestamp,
-      lastModified: raw.lastModified || raw.sistEndret || raw.last_modified,
-      location: raw.location || raw.lokasjon || raw.sted || '',
+      published: raw.createdOn || raw.published || raw.publisert || raw.timestamp,
+      lastModified: raw.updatedOn || raw.lastModified || raw.sistEndret || raw.last_modified,
+      location: raw.area || raw.municipality || raw.location || raw.lokasjon || raw.sted || '',
       district: raw.district || raw.politidistrikt || raw.distrikt || '',
       category: raw.category || raw.kategori || raw.type || 'Ukjent',
       subcategory: raw.subcategory || raw.underkategori,
-      title: raw.title || raw.tittel || raw.overskrift || '',
-      description: raw.description || raw.beskrivelse || raw.tekst || '',
-      status: raw.status || raw.status,
+      title: raw.category || raw.title || raw.tittel || raw.overskrift || '', // Use category as title if no title
+      description: raw.text || raw.description || raw.beskrivelse || raw.tekst || '',
+      status: raw.isActive ? 'Aktiv' : 'Avsluttet',
     };
   }
 
@@ -120,14 +154,18 @@ export class PolitiloggenService {
    * Check API health
    */
   async healthCheck(): Promise<boolean> {
+    if (this.useMockData) {
+      return true; // Always healthy in mock mode
+    }
+
     try {
-      // Try fetching incidents as a health check (API doesn't have /health endpoint)
-      const response = await this.client.get('/hendelser', {
+      // Correct endpoint: /messages with minimal parameters
+      const response = await this.client.get('/messages', {
         params: {
-          limit: 1,
-          // Optional: filter by Oslo to make request faster
+          Take: 1,
+          Districts: ['Oslo'],
         },
-        timeout: 10000, // Increased timeout to 10 seconds
+        timeout: 10000,
       });
       return response.status === 200;
     } catch (error) {
