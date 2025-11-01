@@ -13,6 +13,7 @@
     "db:setup": "bash scripts/setup-db.sh",
     "db:docker": "docker-compose up -d postgres",
     "db:docker-down": "docker-compose down",
+    "seed": "node scripts/seed-incidents.js",
     "type-check": "tsc --noEmit"
   },
   "repository": {
